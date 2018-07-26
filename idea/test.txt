@@ -22,4 +22,9 @@ clash:this is to test ze-xing's update
 Done
 
 this is to test clash. Jaosn added a comment here.
+<<<<<<< HEAD
 >>>>>>> 38c902724ec31fc1cef4c25bce61828d96b71a8f
+=======
+
+changecccccc ze xing
+>>>>>>> 06c4ac54186c70cd2ba7ef7e5f610fdeecc06209
