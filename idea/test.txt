@@ -5,6 +5,7 @@ step 2: add git to your github desktop
 clash:this is to test ze-xing's update 
 step 3: add files to your local repository
 step 4: "commit to master"
+<<<<<<< HEAD
 clash:this is to test ze-xing's update 
 Done
 clash:this is to test ze-xing's update 
@@ -16,3 +17,9 @@ clash:this is to test ze-xing's update
 clash:this is to test ze-xing's update 
 clash:this is to test ze-xing's update 
 clash:this is to test ze-xing's update 
+=======
+
+Done
+
+this is to test clash. Jaosn added a comment here.
+>>>>>>> 38c902724ec31fc1cef4c25bce61828d96b71a8f
