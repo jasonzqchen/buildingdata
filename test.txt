@@ -1,1 +1,8 @@
-this file is to test if it can auto upload to github from my local drive
+this file is to test if it can upload to github from my local drive
+
+step 1: download github desktop
+step 2: add git to your github desktop
+step 3: add files to your local repository
+step 4: "commit to master"
+
+Done
