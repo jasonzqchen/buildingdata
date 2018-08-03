@@ -18,7 +18,7 @@ import re
 # 3.steel tonnage,从哪里去拿
 # 4.柱和墙的尺寸？
 # 5.**[IMPORTANT] we need to develop a checking program to check dictionary at the end and to warn user whcih data may not be correct
-
+# **** 用生成器 yield to speed up the search?? <--- to modify the code
 # output: BuildingDataDict
 # it stores all the date got from the file
 # units: KN, m
@@ -74,7 +74,7 @@ def _findtable(tables,strings):
     return foundindex
 
 # find position in the table based on input search string
-def _findTablepos(array, str_row, str_col, row_c = []):
+def _findTablePos(array, str_row, str_col, row_c = []):
     # find col
     from collections import Counter
     (row, col) = array.shape
@@ -157,7 +157,7 @@ def _outTableData(list_tables, strings, str_row, str_col, row_c=[], datakey=[], 
         print(c)
         for r in str_row:
             print(r)
-            value = _findTablepos(aTable, r, c, row_c)
+            value = _findTablePos(aTable, r, c, row_c)
             
             # apply multiplier for unit
             value = re.sub(',','',value)
@@ -314,20 +314,20 @@ def _mainEPR(path, datadict):
     datakey = ['Base_shear_x','Base_moment_x','Base_shear_y','Base_moment_y']
     datadict = _outTableData(list_tables,strings,str_row,str_col,row_c,datakey,datadict,project)
     
-    return datadict, list_tables
+    return list_tables
 
 # to be developed
 def _checkunit(project, datadict):
     bsx = datadict[project]['Base_shear_x']
     bsy = datadict[project]['Base_shear_y']
     bmx = datadict[project]['Base_moment_x']
-    bmy = datadict[project]['Base_moment_y']        
+    bmy = datadict[project]['Base_moment_y']
     
 # %% running the file
 start = time.time()
 if __name__ == '__main__':
     path = u'test_report.docx'
-    (datadict, list_tables) = _mainEPR(path, BuildingDataDict)
+    list_tables = _mainEPR(path, BuildingDataDict)
 
 print('run time: ', (time.time()-start)*1000)
 
