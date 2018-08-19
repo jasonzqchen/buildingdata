@@ -55,14 +55,14 @@ def _flatten(l):
     return out
 
 # find the table
-def _findtable(tables,strings):
+def _findtable(tables, pattern):
     flag_old = 0
     for i in range(len(tables)):
         f_list = _flatten(tables[i])
         list_new = "".join(f_list)
         flag = 0
-        for string in strings:
-            if re.search(string,list_new) is None:
+        for each in pattern:
+            if re.search(each,list_new) is None:
                 pass
             else:
                 flag += 1
@@ -121,12 +121,12 @@ def _table2list(tables):
     print('_table2list: stored the table into nested list.\n')
     return list_tables
 
-def _outTableData(list_tables, strings, str_row, str_col, row_c=[], datakey=[], \
+def _outTableData(list_tables, pattern, str_row, str_col, row_c=[], datakey=[], \
              datadict={}, project=[]):
     '''
     ***use this functon when dealing with tables***
     list_table: tables from word document in a list
-    string: to search for tables
+    pattern: to search for tables
     str_row: keywords to search for rows
     str_col: keywords to search for cols
     row_c: identify which column to locate the rows (optional)
@@ -135,7 +135,7 @@ def _outTableData(list_tables, strings, str_row, str_col, row_c=[], datakey=[], 
     '''
     if datakey == []:
         datakey = str_row
-    index = _findtable(list_tables,strings)
+    index = _findtable(list_tables, pattern)
     
     # find units
     f_list = _flatten(list_tables[index])
@@ -176,14 +176,14 @@ def _outTableData(list_tables, strings, str_row, str_col, row_c=[], datakey=[], 
     print('_outdata: stored the found data into dictionary.\n')
     return datadict
 
-def _parseParaOne(docText, string, splitmark = " "):
+def _parseParaOne(docText, pattern, splitmark = " "):
     ''' 
     use this function when you want to loop through a text file to find
     the specific 'numbers' or 'words' in one sentence and output that 
     sentence
     DONOT use this function to search keywords that are NOT in ONE sentence!!
     '''
-    para = re.search(string,docText)
+    para = re.search(pattern,docText)
     parsetext = docText[para.start():para.end()]
     # chinese mark
     parsetext_r = re.sub('[,，。;；]', splitmark, parsetext)
@@ -191,15 +191,19 @@ def _parseParaOne(docText, string, splitmark = " "):
     parsedtextlist = parsetext_r.split(splitmark)
     parsedstring = []
     for parsedtext in parsedtextlist:
-        temp = re.search(string,parsedtext)
-        if temp is not None:
-            parsedstring.append(temp.string)
+        match = re.search(pattern, parsedtext)
+        if match is not None:
+            parsedstring.append(match.string)
     print('_parsepara found ', len(parsedstring), 'strings: ', parsedstring)
     return parsedstring
 
-def _parsePara(docText, string, keywords):
-    para = re.search(string,docText)
-    print(para)
+def _parsePara(docText, title, keywords):
+    '''
+    find the target sentence in the doc based on keywords searching and return
+    with found string joined with '&'
+    '''
+    para = re.search(title, docText)
+    #print(para)
     parsetext = docText[para.start():para.end()]
     templist = []
     for keyword in keywords:
@@ -226,16 +230,16 @@ def _mainEPR(path, datadict):
     # 使用文件名， 文件名在 digfiles.py 文档中根据寻找到文件的文件夹名重新命名。
     
     # Location
-    string = r'((项目概况)|(工程概括))\s+.+'   
+    pattern = r'((项目概况)|(工程概括))\s+.+'   
     keywords = ['香港','深圳','上海','北京','广州','天津','武汉','重庆']    
-    location = _parsePara(docText, string, keywords)
+    location = _parsePara(docText, pattern, keywords)
     datadict[project]['Location'] = location
     
     # building height
     # 结构高度 建筑高度 高度 and 附件有数字 加上m或者米
-    string = r'(塔楼)?((楼体高度)|(结构高度)|(建筑高度)|(高度)|高).+\d\d\d\d?.?\d?(m|米)'
-    splitpara = _parseParaOne(docText, string)[0]
-    height = re.findall("\d+.?\d?",splitpara)[0]
+    pattern = r'(塔楼)?((楼体高度)|(结构高度)|(建筑高度)|(高度)|高).+\d\d\d\d?.?\d?(m|米)'
+    splitpara = _parseParaOne(docText, pattern)[0]
+    height = re.search("\d+.?\d?", splitpara).group()
     datadict[project]['Building Height'] = height
     
     # nos. of floors
@@ -246,9 +250,9 @@ def _mainEPR(path, datadict):
     # the estimated nos. of floors use 4 as storey floor which is a typical
     # floor height for typical buildings
     
-    string = r'结?构?高?度?.?\d\d\d?层'
+    pattern = r'结?构?高?度?.?\d\d\d?层'
     estfloors = float(height)/4
-    splitparas = _parseParaOne(docText, string)
+    splitparas = _parseParaOne(docText, pattern)
     
     splitpara_n = []
     for splitpara in splitparas:
@@ -256,20 +260,20 @@ def _mainEPR(path, datadict):
     
     adiff = np.array(splitpara_n) - estfloors
     index = np.where(adiff==np.max(adiff))[0][0]
-    floors = re.findall(string,splitpara)[index]
+    floors = re.findall(pattern, splitpara)[index]
     floors = re.findall('\d+',floors)[0]
     datadict[project]['Nos of Floors'] = floors
     
     # building functions..e.g office, comercial..etc
     # 搜索 楼面结构 or 楼板体系 or 楼面体系 办公楼 酒店 公寓
-    string = r'((楼面布置)|(楼面结构)|(楼板体系))\s+.+'   
+    pattern = r'((楼面布置)|(楼面结构)|(楼板体系))\s+.+'   
     keywords = ['办公','商业','公寓']    
-    functions = _parsePara(docText, string, keywords)
+    functions = _parsePara(docText, pattern, keywords)
     datadict[project]['Building Functions'] = functions
 
     # structural system
     # 搜索结构体系， 伸臂， 桁架， 巨柱， 框架， 核心筒， 斜撑
-    string = r'(结构体系)\s+.+' 
+    pattern = r'(结构体系)\s+.+' 
     keywords = ['矩形钢管混凝土柱','型钢混凝土柱','钢筋混凝土柱'\
             '巨型框架','巨型钢管混凝土柱','巨型型钢混凝土柱','巨型钢筋混凝土柱',\
             '巨型钢?斜支撑(框架)?',\
@@ -277,7 +281,7 @@ def _mainEPR(path, datadict):
             '核心筒',\
             '组合楼板','钢筋混凝土楼?梁?板',\
             '伸臂桁架','腰桁架']
-    strsys = _parsePara(docText, string, keywords)
+    strsys = _parsePara(docText, pattern, keywords)
     datadict[project]['Structural System'] = strsys
     
     # steel tonnage <--- how to get??
@@ -287,32 +291,32 @@ def _mainEPR(path, datadict):
     # building period
     # use key words to search tables first, 
     # then use key
-    strings = ['振型','周期','YJK','(ETABS)|(Etabs)']
+    pattern = ['振型','周期','YJK','(ETABS)|(Etabs)']
     row_c = ['(周期)|(振型)']
     str_row = ['{:.0f}'.format(x) for x in range(1,4)]
     str_col = [['YJK','周期']]
     datakey = ['Period:1st Mode','Period:2nd Mode','Period:3rd Mode']
-    datadict = _outTableData(list_tables,strings,str_row,str_col,row_c,datakey,datadict,project)
+    datadict = _outTableData(list_tables,pattern,str_row,str_col,row_c,datakey,datadict,project)
 
     
     # building weight
-    strings = ['质量','活载','(自重)|(恒载)','YJK','(ETABS)|(Etabs)']
+    pattern = ['质量','活载','(自重)|(恒载)','YJK','(ETABS)|(Etabs)']
     row_c = ['项目']
     str_row = ['自重','附加恒载','活载']
     str_col = ['质量']
     datakey = ['SW','SDL','LL']
-    datadict = _outTableData(list_tables,strings,str_row,str_col,row_c,datakey,datadict,project)
+    datadict = _outTableData(list_tables,pattern,str_row,str_col,row_c,datakey,datadict,project)
     
     # wind load and seismic load 
     # 这个还需要仔细研究一下，基本上很多EPR都是不同的格式，可能要写很多个情况。
-    strings = ['剪力','(倾覆弯矩)|(倾覆弯矩)','YJK','(ETABS)|(Etabs)']
+    pattern = ['剪力','(倾覆弯矩)|(倾覆弯矩)','YJK','(ETABS)|(Etabs)']
     row_c = ['荷载工况']
     str_row = [
             ['剪力','(X|x)'],['倾覆弯矩','(X|x)'],['剪力','(Y|y)'],['倾覆弯矩','(Y|y)']
             ]
     str_col = ['YJK']
     datakey = ['Base_shear_x','Base_moment_x','Base_shear_y','Base_moment_y']
-    datadict = _outTableData(list_tables,strings,str_row,str_col,row_c,datakey,datadict,project)
+    datadict = _outTableData(list_tables,pattern,str_row,str_col,row_c,datakey,datadict,project)
     
     return list_tables
 
@@ -339,8 +343,8 @@ doc = docx.Document(path)
 docTextlist = [para.text for para in doc.paragraphs]
 docText = " ".join(docTextlist)
 
-string = r'(结构体系)\s+.+' 
-para = re.search(string,docText)
+pattern = r'(结构体系)\s+.+' 
+para = re.search(pattern,docText)
 parsetext = docText[para.start():para.end()]
 
 keywords = ['矩形钢管混凝土柱','型钢混凝土柱','钢筋混凝土柱'\

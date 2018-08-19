@@ -15,33 +15,48 @@ import shutil
 # %% 
 class Digfiles:
     def __init__(self, paths, savepath):    
-        self.paths = paths # main search master path
-        self.savepath = savepath # save to which path
-        self.folderkey = [] # the keywords for searching prioritised folders
-        self.filekey = [] # the keywords for searching prioritised files
+        self.__paths = paths # main search master path
+        self.__savepath = savepath # save to which path
+        self.__folderkey = [] # the keywords for searching prioritised folders
+        self.__filekey = [] # the keywords for searching prioritised files
         self.datadict = dict() # dictionary to store all the files for all projects
+        Digfiles.runsetting(self)
     
-    def runsetting(self, save=0, overwrite=0, semiwalk= 0, fullwalk=0):
+    def runsetting(self, filterEXT=[], save=0, overwrite=0, deepsearch = 1, semi_os_walk= 0, full_os_walk=0):
         '''
         ******run settings*******
         save: save the found files to the target folder
         overwrite: save the found files to the target folder and overwrite 
                     if there's same files
-        semiwalk: semiwalk is in between keywords and full os.walk method, it use os.walk
-                    when cannot use keywords to find the file
-        fullwalk: call os.walk functions (slowfindfile) for full path search, very slow..
+        deepsearch: will go through deeper search if cannot trace the files based on folderkey
+        semi_os_walk: use os.walk when cannot use keywords to find any file in the main folder
+        full_os_walk: call os.walk functions (fulloswalk) for full path search, very slow..
         
         '''
+        self.extfilter = filterEXT
         self.save = save
         self.overwrite = overwrite
-        self.semiwalk = semiwalk
-        self.fullwalk = fullwalk
+        self.deepsearch = deepsearch
+        self.semiwalk = semi_os_walk
+        self.fullwalk = full_os_walk
+        
+    @property
+    def setfolderkey(self):
+        return self.__setfolderkey
     
+    @property
+    def setfilekey(self):
+        return self.__setfilekey
+    
+    @setfolderkey.setter        
     def setfolderkey(self, key):
-        self.folderkey = re.compile(key, re.IGNORECASE)
-
+        self.__folderkey = re.compile(key, re.IGNORECASE)
+        self.__setfolderkey = self.__folderkey
+        
+    @setfilekey.setter
     def setfilekey(self, key):
-        self.filekey = re.compile(key, re.IGNORECASE)
+        self.__filekey = re.compile(key, re.IGNORECASE)
+        self.__setfilekey = self.__filekey
         
     def subdirs(self, path):
         """Yield directory names not starting with '.' under given path."""
@@ -64,23 +79,24 @@ class Digfiles:
                 pass #print('No permission'+ str(reason))
         except:
                 pass #print('Error..')
-#----------------------------------------------------------------------------      
-    # this is a recursive function to update path and store all the files found            
+#----------------------------------------------------------------------------                 
     def loop(self, path, store):
+        # this is a recursive function to update path and store all the files found 
         entries = Digfiles.subdirs(self, path)
         for eachEntry in entries:
-            if self.folderkey.search(eachEntry.name): #search the shallow layer
+            if self.__folderkey.search(eachEntry.name): #search the shallow layer
                 Digfiles.loop(self, eachEntry.path, store) # search the deeper layer
                 
         files = Digfiles.subfiles(self, path)
         for eachFile in files:
                 if not eachFile.name.startswith('~') and \
-                self.filekey.search(eachFile.name): # this is to find the files, to be modified
+                self.__filekey.search(eachFile.name): # this is to find the files, to be modified
                     store.append(eachFile.path)   
         return store
     
 #----------------------------------------------------------------------------  
     def loopfoldersName(self, paths):
+        # this is to create list of folder's name in paths
         names = []
         for path in paths:
             entries = Digfiles.subdirs(self, path)
@@ -89,17 +105,25 @@ class Digfiles:
         return names
     
     def loopfolders(self, paths):
+        # this is to create list for folders and files in paths
+        folders = []
+        files = []
         for path in paths:
-            folders = [eachEntry.path for eachEntry in Digfiles.subdirs(self, path)]
-            files = [eachFile.path for eachFile in Digfiles.subfiles(self, path)]
+            for eachEntry in Digfiles.subdirs(self, path):
+                folders.append(eachEntry.path)
+            for eachFile in Digfiles.subfiles(self, path):
+                files.append(eachFile.path)
         return folders, files
 
-    def findfolders(self, folders, files):       
-        ffolders = [folder for folder in folders if self.folderkey.search(folder)]
-        ffiles = [file for file in files if self.filekey.search(file)]
+    def findfolders(self, folders, files):      
+        # this is to create list for folders and files based on filekey and folderkey
+        # defined in class
+        ffolders = [folder for folder in folders if self.__folderkey.search(folder)]
+        ffiles = [file for file in files if self.__filekey.search(file)]
         return ffolders, ffiles
     
-    def ziploop(self, newpaths):
+    def __ziploop(self, newpaths):
+        # this is to combined loop folders and find folders
         (listoffolders, listoffiles) = Digfiles.loopfolders(self, newpaths)
         (newpaths, ffiles) = Digfiles.findfolders(self, listoffolders, listoffiles)
         #print(newpaths)
@@ -138,7 +162,7 @@ class Digfiles:
         except OSError:
             print ('Error: Creating directory. ' +  savepath)     
             
-    def slowfindfile(self, path):
+    def fulloswalk(self, path, store = []):
         '''
         this function use os.walk to walk through all directories in path, and
         return with a stored function storing all the file path that meet the
@@ -146,13 +170,12 @@ class Digfiles:
         
         use with cautions -> very slow
         '''
-        store = []
         for root, dirs, files in os.walk(path):
             for file in files:
-                if self.filekey.search(file) is not None:
+                if self.__filekey.search(file) is not None:
                     store.append(os.path.join(root, file))
         return store
-    
+        
 #----------------------------main execution code---------------------------------
 
     def main(self, path):
@@ -167,7 +190,7 @@ class Digfiles:
         2. if there no folderkey in the layer, then go to deeper layer to find
         3. semi-walking is in between keywords and full os.walk method, it use os.walk
             when cannot use keywords to find the file
-        4. call os.walk functions (slowfindfile) for full path search, very slow..
+        4. call os.walk functions (fulloswalk) for full path search, very slow..
                 
         '''
         store = []
@@ -177,7 +200,7 @@ class Digfiles:
             store = Digfiles.loop(self, path, store) # step 1
             if self.fullwalk:
                 #print('method 4...fullwalking....', path)
-                store = Digfiles.slowfindfile(self, path)
+                store = Digfiles.fulloswalk(self, path)
                 return store
             elif store != []: 
                 # if there's folderkey found in the layer
@@ -192,26 +215,36 @@ class Digfiles:
                 newpaths.append(path)
                 counter = 0
                 
-                (listoffolders, lfis, newpaths, ffis) = Digfiles.ziploop(self, newpaths)
-                
+                (listoffolders, lfis, newpaths, ffis) = Digfiles.__ziploop(self, newpaths)
                 while True:
+                    ''''
+                    加功能：如果找到folderkey，可给用户选择是否要在folderkey后全局深度搜索下去。
+                    '''
                     # here is to loop to search the folder based on keywords
-                    if newpaths == []: 
+                    if newpaths == []:
                         # if the first search didn't get the anything, then we need to
                         # feed back the all the folderpath back to loop and find the
                         # next layer of folders
                         if listoffolders != []:
-                            (listoffolders, lfis, newpaths, ffis) = Digfiles.ziploop(self, listoffolders)
+                            (listoffolders, lfis, newpaths, ffis) = Digfiles.__ziploop(self, listoffolders)
                             if ffis != []:
                                 for ffi in ffis:
                                     store.append(ffi)
+                                    
+                    # storing searched files
                     if len(newpaths) == 1:
-                        store = Digfiles.loop(self, newpaths[0], store)
+                        if self.deepsearch == 1:
+                            store = Digfiles.fulloswalk(self, newpaths[0], store)
+                        else:
+                            store = Digfiles.loop(self, newpaths[0], store)
                         return store
+                    
                     if len(newpaths) > 1:
                         for newpath in newpaths:
-                            #print(newpath)
-                            store = Digfiles.loop(self, newpath, store)
+                            if self.deepsearch == 1: 
+                                store = Digfiles.fulloswalk(self, newpath, store)
+                            else:
+                                store = Digfiles.loop(self, newpath, store)
                         return store
                     
                     counter += 1
@@ -219,7 +252,7 @@ class Digfiles:
                                         # through all files....
                         if self.semiwalk:
                             #print('method 3...deep.digging..', path)
-                            store = Digfiles.slowfindfile(self, path)
+                            store = Digfiles.fulloswalk(self, path)
                             #print('\n',path,'\n')
                             #print(store)
                         return store
@@ -229,41 +262,70 @@ class Digfiles:
         store the data into dictionary with each main folder name
         and copy to the target folder
         '''
-        store = Digfiles.main(self, path)
+        store1 = Digfiles.main(self, path)
+        
+        if self.extfilter != []:
+            store = filterfile(store1, self.extfilter)
+
         #print('\n' + name)
         #print(store)
         if store == []:
             pass #print('!Warning: cannot find the files, please review the targeted folder or filekey')
         else:
-            self.datadict[name] = [store]
+            self.datadict[name] = store
+        return self.datadict
         
-        if self.save and store !=[]:
-            Digfiles.createFolder(self, self.savepath + os.sep + name)
-            savepathfull = self.savepath + os.sep + name
-            print('copying...', name)
-            Digfiles.copyfile(self, store, savepathfull)
-    
     def run(self):
-        (projectpaths,files) = df.loopfolders(self.paths)
-        projectnames = df.loopfoldersName(self.paths)
+        (projectpaths,files) = Digfiles.loopfolders(self, self.__paths)
+        projectnames = Digfiles.loopfoldersName(self, self.__paths)
         for projectpath, projectname in zip(projectpaths, projectnames):
-            Digfiles.store2dict(self, projectpath, projectname)
-
+            datadict = Digfiles.store2dict(self, projectpath, projectname)
         
+        # save and copy files
+        if self.save:
+            for name in datadict.keys():
+                Digfiles.createFolder(self, self.__savepath + os.sep + name)
+                savepathfull = self.__savepath + os.sep + name
+                print('copying...', name)
+                Digfiles.copyfile(self, datadict[name], savepathfull)    
+
+def filterdict(filedict):
+    modified_dict = {}
+    links = []
+    for key in filedict.keys():
+        for link in filedict[key]:
+            if link.endswith('.doc') or link.endswith('.docx') or link.endswith('.pdf'):
+                links.append(link)
+        modified_dict[key] = links
+    return modified_dict
+
+def filterfile(files, exts):
+    links = []
+    for file in files:
+        for ext in exts:
+            if file.endswith(ext):
+                links.append(file)       
+    return links
+
+# %%
 if __name__ == '__main__':        
     start = time.time()
     
     paths = paths = [r'C:\Users\Ziqiang\OneDrive - Arup']
-    savepath = r'C:\Users\Ziqiang\Desktop\EPR'
+    savepath = r'C:\Users\Ziqiang\Desktop\EPR1'
     df = Digfiles(paths, savepath)
     
     folderkeyword = '(超限)|(抗震)|(EPR)|(报告)|(Report(s)?)'
     filekeyword = '(超限)|(抗震)|(EPR)'
-    df.setfolderkey(folderkeyword)
-    df.setfilekey(filekeyword)    
-    df.runsetting(0,0,1,0)
+    df.setfolderkey = folderkeyword
+    df.setfilekey = filekeyword
+
+    filterEXT = ['.doc','.docx','pdf']
+    df.runsetting(filterEXT,0,0,1,0,0)
+    # extfilter
     # save
     # overwrite
+    # deepsearch
     # semiwalk
     # fullwalk
     
