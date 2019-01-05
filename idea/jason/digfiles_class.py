@@ -36,24 +36,12 @@ class Digfiles:
         self.overwrite = overwrite
         self.semiwalk = semiwalk
         self.fullwalk = fullwalk
-        
-    @property
-    def setfolderkey(self):
-        return self._setfolderkey
     
-    @property
-    def setfilekey(self):
-        return self._setfilekey
-    
-    @setfolderkey.setter        
     def setfolderkey(self, key):
         self.folderkey = re.compile(key, re.IGNORECASE)
-        self._setfolderkey = self.folderkey
-        
-    @setfilekey.setter
+
     def setfilekey(self, key):
         self.filekey = re.compile(key, re.IGNORECASE)
-        self._setfilekey = self.filekey
         
     def subdirs(self, path):
         """Yield directory names not starting with '.' under given path."""
@@ -271,11 +259,9 @@ if __name__ == '__main__':
     
     folderkeyword = '(超限)|(抗震)|(EPR)|(报告)|(Report(s)?)'
     filekeyword = '(超限)|(抗震)|(EPR)'
-    df.setfolderkey = folderkeyword
-    df.setfilekey = filekeyword
-    #df.setfolderkey(folderkeyword)
-    #df.setfilekey(filekeyword)    
-    df.runsetting(0,0,0,0)
+    df.setfolderkey(folderkeyword)
+    df.setfilekey(filekeyword)    
+    df.runsetting(0,0,1,0)
     # save
     # overwrite
     # semiwalk
